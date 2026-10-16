@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>五子棋人机对战</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft Yahei", sans-serif;
+            background: #f5f5f5;
+        }
+
+        /* 首页 */
+        #home {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #home h1 {
+            font-size: 48px;
+            color: #333;
+            margin-bottom: 40px;
+        }
+
+        #startBtn {
+            padding: 16px 40px;
+            font-size: 24px;
+            background: #222;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        #startBtn:hover {
+            background: #444;
+        }
+
+        /* 游戏页面 */
+        #game {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        #game h2 {
+            margin-bottom: 15px;
+            color: #222;
+        }
+
+        #tip {
+            font-size: 20px;
+            margin: 10px 0;
+            min-height: 28px;
+        }
+
+        .menu {
+            margin: 15px 0;
+        }
+
+        .menu button {
+            padding: 8px 20px;
+            font-size: 16px;
+            margin: 0 8px;
+            cursor: pointer;
+            border: 1px solid #333;
+            background: #fff;
+            border-radius: 6px;
+        }
+
+        .menu button:hover {
+            background: #eee;
+        }
+
+        #board {
+            border: 3px solid #222;
+            background: #ddb877;
+            display: block;
+            margin: 0 auto;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 首页 -->
+<div id="home">
+    <h1>五子棋人机对战</h1>
+    <button id="startBtn">开始游戏</button>
+</div>
+
+<!-- 游戏界面 -->
+<div id="game">
+    <h2>五子棋 · 人机对战</h2>
+    <div class="menu">
+        <button id="restartBtn">重新开局</button>
+        <button id="homeBtn">返回主页</button>
+    </div>
+    <div id="tip">轮到你落子（黑棋）</div>
+    <canvas id="board" width="450" height="450"></canvas>
+</div>
+
+<script>
+    const home = document.getElementById("home");
+    const gamePage = document.getElementById("game");
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const tipText = document.getElementById("tip");
+    const startBtn = document.getElementById("startBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const homeBtn = document.getElementById("homeBtn");
+
+    const SIZE = 15;
+    const CELL = 30;
+    const OFFSET = CELL;
+
+    let board = [];
+    let gameOver = false;
+
+    startBtn.onclick = function () {
+        home.style.display = "none";
+        gamePage.style.display = "block";
+        initGame();
+    };
+
+    restartBtn.onclick = initGame;
+
+    homeBtn.onclick = function () {
+        gamePage.style.display = "none";
+        home.style.display = "flex";
+    };
+
+    function initGame() {
+        gameOver = false;
+        tipText.innerText = "轮到你落子（黑棋）";
+        board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+        drawBoard();
+    }
+
+    function drawBoard() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 1;
+
+        for (let i = 0; i < SIZE; i++) {
+            ctx.beginPath();
+            ctx.moveTo(OFFSET + i * CELL, OFFSET);
+            ctx.lineTo(OFFSET + i * CELL, OFFSET + (SIZE - 1) * CELL);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(OFFSET, OFFSET + i * CELL);
+            ctx.lineTo(OFFSET + (SIZE - 1) * CELL, OFFSET + i * CELL);
+            ctx.stroke();
+        }
+
+        for (let x = 0; x < SIZE; x++) {
+            for (let y = 0; y < SIZE; y++) {
+                if (board[x][y] !== 0) {
+                    drawPiece(x, y, board[x][y]);
+                }
+            }
+        }
+    }
+
+    function drawPiece(x, y, color) {
+        ctx.beginPath();
+        ctx.arc(
+            OFFSET + x * CELL,
+            OFFSET + y * CELL,
+            12,
+            0,
+            Math.PI * 2
+        );
+        ctx.fillStyle = color === 1 ? "#000" : "#fff";
+        ctx.fill();
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
+    function checkWin(x, y, color) {
+        const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+        for (let [dx, dy] of dirs) {
+            let count = 1;
+            for (let d = 1; d < 5; d++) {
+                let nx = x + dx * d;
+                let ny = y + dy * d;
+                if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[nx][ny] === color) count++;
+                else break;
+            }
+            for (let d = 1; d < 5; d++) {
+                let nx = x - dx * d;
+                let ny = y - dy * d;
+                if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[nx][ny] === color) count++;
+                else break;
+            }
+            if (count >= 5) return true;
+        }
+        return false;
+    }
+
+    function countLine(x, y, dx, dy, color) {
+        let count = 1;
+        let block = 0;
+        for (let d = 1; d <= 4; d++) {
+            let nx = x + dx * d;
+            let ny = y + dy * d;
+            if (nx < 0 || nx >= SIZE || ny < 0 || ny >= SIZE) { block++; break; }
+            if (board[nx][ny] === color) count++;
+            else if (board[nx][ny] !== 0) { block++; break; }
+            else break;
+        }
+        for (let d = 1; d <= 4; d++) {
+            let nx = x - dx * d;
+            let ny = y - dy * d;
+            if (nx < 0 || nx >= SIZE || ny < 0 || ny >= SIZE) { block++; break; }
+            if (board[nx][ny] === color) count++;
+            else if (board[nx][ny] !== 0) { block++; break; }
+            else break;
+        }
+        return { count, block };
+    }
+
+    function evaluatePoint(x, y, color) {
+        if (board[x][y] !== 0) return 0;
+        let score = 0;
+        const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+        for (let [dx, dy] of dirs) {
+            let { count, block } = countLine(x, y, dx, dy, color);
+            if (count >= 5) score += 1000000;
+            else if (count === 4 && block === 0) score += 100000;
+            else if (count === 4 && block === 1) score += 50000;
+            else if (count === 3 && block === 0) score += 5000;
+            else if (count === 3 && block === 1) score += 800;
+            else if (count === 2 && block === 0) score += 500;
+            else if (count === 2 && block === 1) score += 100;
+        }
+        return score;
+    }
+
+    function aiPlay() {
+        if (gameOver) return;
+        let bestScore = -Infinity;
+        let bestX = 7;
+        let bestY = 7;
+        for (let x = 0; x < SIZE; x++) {
+            for (let y = 0; y < SIZE; y++) {
+                if (board[x][y] !== 0) continue;
+                let attackScore = evaluatePoint(x, y, 2);
+                let defendScore = evaluatePoint(x, y, 1);
+                let total = Math.max(attackScore, defendScore * 1.15);
+                if (total < 10) {
+                    total += 15 - Math.abs(x - 7) - Math.abs(y - 7);
+                }
+                if (total > bestScore) {
+                    bestScore = total;
+                    bestX = x;
+                    bestY = y;
+                }
+            }
+        }
+        board[bestX][bestY] = 2;
+        drawPiece(bestX, bestY, 2);
+        if (checkWin(bestX, bestY, 2)) {
+            tipText.innerText = "AI白棋获胜！";
+            gameOver = true;
+        } else {
+            tipText.innerText = "轮到你落子（黑棋）";
+        }
+    }
+
+    // ==========【重点修复点击坐标】==========
+    canvas.addEventListener("click", function (e) {
+        if (gameOver) return;
+        const rect = canvas.getBoundingClientRect();
+        // 减去canvas左上角，再减去OFFSET，然后除以格子宽度
+        const px = e.clientX - rect.left - OFFSET;
+        const py = e.clientY - rect.top - OFFSET;
+
+        let x = Math.round(px / CELL);
+        let y = Math.round(py / CELL);
+
+        if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) return;
+        if (board[x][y] !== 0) return;
+
+        board[x][y] = 1;
+        drawPiece(x, y, 1);
+
+        if (checkWin(x, y, 1)) {
+            tipText.innerText = "恭喜！你黑棋胜利！";
+            gameOver = true;
+            return;
+        }
+        tipText.innerText = "AI思考中...";
+        setTimeout(aiPlay, 300);
+    });
+</script>
+
+</body>
+</html>
